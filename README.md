@@ -158,12 +158,6 @@ speaker_data = {
 
 ## 训练策略
 
-### 1. 渐进式训练
-```python
-# 阶段1: 只训练landmarks (epochs 1-25)
-# 阶段2: 加入AU (epochs 26-50)  
-# 阶段3: 加入pose, gaze (epochs 51-75)
-# 阶段4: 端到端微调 (epochs 76-100)
 ```
 
 ### 2. 损失函数组合
