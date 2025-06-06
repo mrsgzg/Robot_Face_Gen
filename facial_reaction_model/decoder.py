@@ -123,8 +123,8 @@ class ListenerReactionDecoder(nn.Module):
         
         # 四个分支解码器
         self.landmarks_decoder = FeatureBranchDecoder(feature_dim, 136, 'landmarks')  # 68*2
-        self.au_decoder = FeatureBranchDecoder(feature_dim, 18, 'au')
-        self.pose_decoder = FeatureBranchDecoder(feature_dim, 4, 'pose')
+        self.au_decoder = FeatureBranchDecoder(feature_dim, 17, 'au')
+        self.pose_decoder = FeatureBranchDecoder(feature_dim, 3, 'pose')
         self.gaze_decoder = FeatureBranchDecoder(feature_dim, 2, 'gaze')
         
         # 特征间协调层
@@ -268,7 +268,7 @@ class SpeakerReconstructionDecoder(nn.Module):
         self.speaker_output_map = nn.Sequential(
             nn.Linear(feature_dim, feature_dim),
             nn.ReLU(),
-            nn.Linear(feature_dim, 136 + 18 + 4 + 2)  # 重建所有speaker特征
+            nn.Linear(feature_dim, 136 + 17 + 3 + 2)  # 重建所有speaker特征
         )
         
         # 初始化权重
@@ -292,9 +292,9 @@ class SpeakerReconstructionDecoder(nn.Module):
         
         # 分离不同特征
         landmarks_out = output[:, :, :136]
-        au_out = output[:, :, 136:154]
-        pose_out = output[:, :, 154:158]
-        gaze_out = output[:, :, 158:160]
+        au_out = output[:, :, 136:153]
+        pose_out = output[:, :, 153:156]
+        gaze_out = output[:, :, 156:158]
         
         return {
             'landmarks': landmarks_out,

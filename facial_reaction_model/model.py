@@ -74,7 +74,7 @@ class FacialReactionModel(nn.Module):
         self.speaker_decoder = SpeakerReconstructionDecoder(feature_dim=feature_dim)
         
         # 历史状态处理
-        self.past_motion_linear = nn.Linear(160, feature_dim)  # 136+18+4+2 -> feature_dim
+        self.past_motion_linear = nn.Linear(158, feature_dim)  # 136+18+4+2 -> feature_dim
         self.ppe = PeriodicPositionalEncoding(feature_dim, period=period, max_seq_len=max_seq_len)
     
     def forward(
@@ -101,7 +101,7 @@ class FacialReactionModel(nn.Module):
         # 2. 窗口化处理
         # 初始化历史状态
         past_reaction_features = torch.zeros(
-            (batch_size, self.window_size, 160),  # 136+18+4+2
+            (batch_size, self.window_size, 158),  # 136+18+4+2
             device=speaker_motion.device
         )
         
@@ -164,10 +164,10 @@ class FacialReactionModel(nn.Module):
             # 更新历史状态
             current_features = torch.cat([
                 window_predictions['landmarks'],  # (B, window_size, 136)
-                window_predictions['au'],         # (B, window_size, 18)
-                window_predictions['pose'],       # (B, window_size, 4)
+                window_predictions['au'],         # (B, window_size, 17)
+                window_predictions['pose'],       # (B, window_size, 3)
                 window_predictions['gaze']        # (B, window_size, 2)
-            ], dim=-1)  # (B, window_size, 160)
+            ], dim=-1)  # (B, window_size, 158)
             
             if i == 0:
                 past_reaction_features = current_features
@@ -195,7 +195,7 @@ class FacialReactionModel(nn.Module):
     def inference_step(
         self,
         speaker_data: Dict[str, torch.Tensor],
-        past_reaction_features: torch.Tensor,  # (B, window_size, 160)
+        past_reaction_features: torch.Tensor,  # (B, window_size, 158)
         past_motion_sample: Optional[torch.Tensor] = None
     ) -> Tuple[Dict[str, torch.Tensor], torch.Tensor, torch.Tensor]:
         """
@@ -252,7 +252,7 @@ class FacialReactionModel(nn.Module):
             current_predictions['au'],
             current_predictions['pose'],
             current_predictions['gaze']
-        ], dim=-1)  # (B, window_size, 160)
+        ], dim=-1)  # (B, window_size, 158)
         
         return current_predictions, current_features, motion_sample
     
@@ -289,7 +289,7 @@ class OnlineInferenceManager:
     def initialize(self, batch_size: int = 1):
         """初始化在线状态"""
         self.past_reaction_features = torch.zeros(
-            (batch_size, self.model.window_size, 160),
+            (batch_size, self.model.window_size, 158),
             device=self.device
         )
         self.past_motion_sample = None

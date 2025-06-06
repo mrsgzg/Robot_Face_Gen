@@ -218,7 +218,7 @@ if __name__ == '__main__':
     mapping_csv = "/mnt/iusers01/fatpou01/compsci01/k09562zs/scratch/Face_data/val.csv"
     
     # ✅ 创建 DataLoader
-    dataloader = get_dataloader(mapping_csv, batch_size=1024, num_workers=0, whisper_model_name="openai/whisper-tiny")
+    dataloader = get_dataloader(mapping_csv, batch_size=32, num_workers=0, whisper_model_name="openai/whisper-tiny")
 
     # ✅ 取出一个 batch 并检查形状
     for i, batch_data in enumerate(dataloader):
