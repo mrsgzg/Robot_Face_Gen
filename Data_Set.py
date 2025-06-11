@@ -208,7 +208,7 @@ class SpeakerListenerDataset(Dataset):
         }
 
 
-def get_dataloader(mapping_csv, batch_size=2, num_workers=0, whisper_model_name="openai/whisper-tiny"):
+def get_dataloader(mapping_csv, batch_size=2, num_workers=2, whisper_model_name="openai/whisper-tiny"):
     dataset = SpeakerListenerDataset(mapping_csv, whisper_model_name=whisper_model_name)
     return DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers, pin_memory=True)
 
