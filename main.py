@@ -187,15 +187,15 @@ def main():
                        help='最小学习率 (默认: 1e-6)')
     
     # === 损失函数权重 ===
-    parser.add_argument('--vae-weight', type=float, default=1.0,
+    parser.add_argument('--vae-weight', type=float, default=5.0,
                        help='VAE损失权重 (默认: 1.0)')
-    parser.add_argument('--smooth-weight', type=float, default=15.0,
+    parser.add_argument('--smooth-weight', type=float, default=1.0,
                        help='平滑损失权重 (默认: 15.0)')
-    parser.add_argument('--diversity-weight', type=float, default=100.0,
+    parser.add_argument('--diversity-weight', type=float, default=1.0,
                        help='多样性损失权重 (默认: 100.0)')
-    parser.add_argument('--contrastive-weight', type=float, default=5.0,
+    parser.add_argument('--contrastive-weight', type=float, default=1.0,
                        help='对比损失权重 (默认: 5.0)')
-    parser.add_argument('--consistency-weight', type=float, default=2.0,
+    parser.add_argument('--consistency-weight', type=float, default=1.0,
                        help='一致性损失权重 (默认: 2.0)')
     parser.add_argument('--speaker-rec-weight', type=float, default=1.0,
                        help='Speaker重建损失权重 (默认: 1.0)')

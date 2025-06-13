@@ -1,2 +1,5 @@
 experiments/
 __pycache__/
+test_results_1/
+test_results_debug/
+test_results_debug_1/

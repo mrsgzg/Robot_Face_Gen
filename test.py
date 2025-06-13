@@ -85,7 +85,9 @@ class SimpleTester:
         
         print(f"✅ 测试样本加载成功")
         print(f"   Speaker landmarks: {batch_data['speaker']['landmarks'].shape}")
+        print(f"   Speaker AU: {batch_data['speaker']['au'].shape}")
         print(f"   Listener landmarks: {batch_data['listener']['landmarks'].shape}")
+        print(f"   Listener AU: {batch_data['listener']['au'].shape}")
         
         return batch_data
     
@@ -100,6 +102,13 @@ class SimpleTester:
         with torch.no_grad():
             for i in range(num_samples):
                 predictions, distributions, _ = self.model(speaker_data, speaker_out=False)
+                
+                # 验证预测结果包含所有必要的特征
+                expected_features = ['landmarks', 'au', 'pose', 'gaze']
+                for feature in expected_features:
+                    if feature not in predictions:
+                        raise ValueError(f"预测结果缺少特征: {feature}")
+                
                 predictions_list.append(predictions)
         
         print(f"✅ 预测生成完成")
@@ -119,47 +128,72 @@ class SimpleTester:
         gt_listener_np = to_numpy(gt_listener)
         pred_listener_np = to_numpy(predictions)
         
-        # 反归一化landmarks (乘以256，因为训练时除以256归一化)
-        def denormalize_landmarks(data_dict):
+        # 反归一化所有特征 (根据Data_Set.py中的归一化方式)
+        def denormalize_features(data_dict):
             result = data_dict.copy()
-            result['landmarks'] = data_dict['landmarks'] * 256.0
+            result['landmarks'] = data_dict['landmarks'] * 256.0  # landmarks除以256归一化
+            result['au'] = data_dict['au'] * 5.0                  # AU除以5归一化
+            # pose和gaze保持原始值，无需反归一化
             return result
         
-        speaker_denorm = denormalize_landmarks(speaker_np)
-        gt_denorm = denormalize_landmarks(gt_listener_np)
-        pred_denorm = denormalize_landmarks(pred_listener_np)
+        speaker_denorm = denormalize_features(speaker_np)
+        gt_denorm = denormalize_features(gt_listener_np)
+        pred_denorm = denormalize_features(pred_listener_np)
         
-        # 保存为CSV
-        def save_landmarks_csv(landmarks, filename):
-            # landmarks shape: (750, 136) -> (750, 68*2)
-            # 分离x和y坐标
-            x_coords = landmarks[:, :68]  # 前68列是x
-            y_coords = landmarks[:, 68:]  # 后68列是y
-            
-            # 创建DataFrame
-            columns = []
-            for i in range(68):
-                columns.append(f'x_{i}')
-            for i in range(68):
-                columns.append(f'y_{i}')
-            
+        # 保存所有特征为CSV
+        def save_all_features_csv(features_dict, prefix, output_dir):
+            """保存所有特征到CSV文件"""
+            for feature_name, feature_data in features_dict.items():
+                if feature_name == 'audio':  # 音频特征太大，跳过
+                    continue
+                    
+                filename = os.path.join(output_dir, f'{prefix}_{feature_name}.csv')
+                
+                if feature_name == 'landmarks':
+                    # landmarks特殊处理：分离x,y坐标
+                    x_coords = feature_data[:, :68]
+                    y_coords = feature_data[:, 68:]
+                    columns = [f'x_{i}' for i in range(68)] + [f'y_{i}' for i in range(68)]
+                    df = pd.DataFrame(feature_data, columns=columns)
+                else:
+                    # 其他特征直接保存
+                    if feature_name == 'au':
+                        columns = [f'AU_{i}' for i in range(feature_data.shape[1])]
+                    elif feature_name == 'pose':
+                        columns = ['pose_Rx', 'pose_Ry', 'pose_Rz']
+                    elif feature_name == 'gaze':
+                        columns = ['gaze_angle_x', 'gaze_angle_y']
+                    else:
+                        columns = [f'{feature_name}_{i}' for i in range(feature_data.shape[1])]
+                    
+                    df = pd.DataFrame(feature_data, columns=columns)
+                
+                df.insert(0, 'frame', range(len(df)))
+                df.to_csv(filename, index=False)
+        
+        # 保存所有特征
+        save_all_features_csv(speaker_denorm, 'speaker', output_dir)
+        save_all_features_csv(gt_denorm, 'gt_listener', output_dir)
+        save_all_features_csv(pred_denorm, 'predicted_listener', output_dir)
+        
+        # 为向后兼容，仍然返回landmarks的DataFrame
+        def load_landmarks_df(features_dict):
+            landmarks = features_dict['landmarks']
+            x_coords = landmarks[:, :68]
+            y_coords = landmarks[:, 68:]
+            columns = [f'x_{i}' for i in range(68)] + [f'y_{i}' for i in range(68)]
             df = pd.DataFrame(landmarks, columns=columns)
             df.insert(0, 'frame', range(len(df)))
-            df.to_csv(filename, index=False)
             return df
         
-        # 保存所有结果
-        speaker_df = save_landmarks_csv(speaker_denorm['landmarks'], 
-                                      os.path.join(output_dir, 'speaker_landmarks.csv'))
-        gt_df = save_landmarks_csv(gt_denorm['landmarks'], 
-                                 os.path.join(output_dir, 'gt_listener_landmarks.csv'))
-        pred_df = save_landmarks_csv(pred_denorm['landmarks'], 
-                                   os.path.join(output_dir, 'predicted_listener_landmarks.csv'))
+        speaker_df = load_landmarks_df(speaker_denorm)
+        gt_df = load_landmarks_df(gt_denorm)
+        pred_df = load_landmarks_df(pred_denorm)
         
         print(f"💾 结果已保存到 {output_dir}:")
-        print(f"   - speaker_landmarks.csv")
-        print(f"   - gt_listener_landmarks.csv") 
-        print(f"   - predicted_listener_landmarks.csv")
+        print(f"   Speaker特征: speaker_landmarks.csv, speaker_au.csv, speaker_pose.csv, speaker_gaze.csv")
+        print(f"   GT Listener特征: gt_listener_landmarks.csv, gt_listener_au.csv, gt_listener_pose.csv, gt_listener_gaze.csv")
+        print(f"   预测Listener特征: predicted_listener_landmarks.csv, predicted_listener_au.csv, predicted_listener_pose.csv, predicted_listener_gaze.csv")
         
         return speaker_df, gt_df, pred_df
     
@@ -255,36 +289,47 @@ class SimpleTester:
         """计算评估指标"""
         print("📊 计算评估指标...")
         
-        # 转换为numpy
-        gt_landmarks = gt_listener['landmarks'].cpu().numpy().squeeze(0)
-        pred_landmarks = predictions['landmarks'].cpu().numpy().squeeze(0)
+        metrics = {}
         
-        # 计算MSE, MAE, RMSE
-        mse = np.mean((gt_landmarks - pred_landmarks) ** 2)
-        mae = np.mean(np.abs(gt_landmarks - pred_landmarks))
-        rmse = np.sqrt(mse)
+        # 对每种特征计算指标
+        for feature_name in ['landmarks', 'au', 'pose', 'gaze']:
+            gt_data = gt_listener[feature_name].cpu().numpy().squeeze(0)
+            pred_data = predictions[feature_name].cpu().numpy().squeeze(0)
+            
+            # 计算基本指标
+            mse = np.mean((gt_data - pred_data) ** 2)
+            mae = np.mean(np.abs(gt_data - pred_data))
+            rmse = np.sqrt(mse)
+            
+            metrics[feature_name] = {
+                'mse': mse,
+                'mae': mae,
+                'rmse': rmse
+            }
+            
+            print(f"  {feature_name.upper()}:")
+            print(f"    MSE: {mse:.6f}")
+            print(f"    MAE: {mae:.6f}")
+            print(f"    RMSE: {rmse:.6f}")
         
-        # 计算每个特征点的平均误差
-        point_errors = np.mean(np.abs(gt_landmarks - pred_landmarks), axis=0)
+        # 对landmarks计算更详细的指标
+        if 'landmarks' in metrics:
+            gt_landmarks = gt_listener['landmarks'].cpu().numpy().squeeze(0)
+            pred_landmarks = predictions['landmarks'].cpu().numpy().squeeze(0)
+            
+            # 分离x和y坐标的误差
+            x_errors = np.abs(gt_landmarks[:, :68] - pred_landmarks[:, :68])
+            y_errors = np.abs(gt_landmarks[:, 68:] - pred_landmarks[:, 68:])
+            
+            metrics['landmarks']['x_mae'] = np.mean(x_errors)
+            metrics['landmarks']['y_mae'] = np.mean(y_errors)
+            metrics['landmarks']['max_point_error'] = np.max(np.sqrt(x_errors**2 + y_errors**2))
+            
+            print(f"    X坐标MAE: {metrics['landmarks']['x_mae']:.6f}")
+            print(f"    Y坐标MAE: {metrics['landmarks']['y_mae']:.6f}")
+            print(f"    最大点误差: {metrics['landmarks']['max_point_error']:.6f}")
         
-        # 分离x和y坐标的误差
-        x_errors = point_errors[:68]
-        y_errors = point_errors[68:]
-        
-        print(f"评估指标:")
-        print(f"  MSE: {mse:.6f}")
-        print(f"  MAE: {mae:.6f}")
-        print(f"  RMSE: {rmse:.6f}")
-        print(f"  平均X误差: {np.mean(x_errors):.6f}")
-        print(f"  平均Y误差: {np.mean(y_errors):.6f}")
-        
-        return {
-            'mse': mse,
-            'mae': mae,
-            'rmse': rmse,
-            'x_error': np.mean(x_errors),
-            'y_error': np.mean(y_errors)
-        }
+        return metrics
     
     def run_test(self, data_csv, sample_idx=0, output_dir='test_results'):
         """运行完整测试"""

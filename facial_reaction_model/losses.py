@@ -36,9 +36,9 @@ class MultiFacialReconstructionLoss(nn.Module):
         }
         
         # 不同特征使用不同的损失函数
-        self.landmarks_loss = nn.SmoothL1Loss(reduction='mean')
+        self.landmarks_loss = nn.MSELoss(reduction='mean')
         self.au_loss = nn.MSELoss(reduction='mean') 
-        self.pose_loss = nn.SmoothL1Loss(reduction='mean')
+        self.pose_loss = nn.MSELoss(reduction='mean')
         self.gaze_loss = nn.MSELoss(reduction='mean')
     
     def forward(
