@@ -16,7 +16,7 @@ from tqdm import tqdm
 
 # 导入你的模型和数据集
 from facial_reaction_model.model import FacialReactionModel
-from Data_Set import SpeakerListenerDataset
+from scratch.Robot_Face_Gen.Data_Set_old import SpeakerListenerDataset
 
 
 class SimpleTester:

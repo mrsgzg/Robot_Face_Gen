@@ -19,7 +19,7 @@ class FacialFeatureEncoder(nn.Module):
         self.feature_dim = feature_dim
         
         # 各种面部特征的投影层
-        self.landmarks_proj = FeatureProjection(136, feature_dim, dropout)  # 68*2 landmarks
+        self.landmarks_proj = FeatureProjection(102, feature_dim, dropout)  # 68*2 landmarks
         self.au_proj = FeatureProjection(17, feature_dim, dropout)          # AU features
         self.pose_proj = FeatureProjection(3, feature_dim, dropout)         # Head pose
         self.gaze_proj = FeatureProjection(2, feature_dim, dropout)         # Gaze direction

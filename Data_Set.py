@@ -15,10 +15,12 @@ class SpeakerListenerDataset(Dataset):
         self.mapping_df = pd.read_csv(mapping_csv, engine="c")  # ✅ 使用 C 解析器加速
         
         # **🔹 定义OpenFace特征列索引**
-        self.landmark_cols = list(range(1, 137))      # 1-136列 (索引0-135): Face landmarks (68x + 68y)
-        self.au_cols = list(range(137, 154))          # 137-154列 (索引136-153): Face AU 
-        self.pose_cols = list(range(157, 160))        # 157-160列 (索引156-159): Head pose
-        self.gaze_cols = list(range(160, 162))        # 161-162列 (索引160-161): Gaze angle
+        self.landmark_x_cols = list(range(17, 68))        # 点17-67的x坐标 (列18-68)
+        self.landmark_y_cols = list(range(86, 137)) 
+        #self.landmark_cols = list(range(1, 137))      # Face landmarks (68x + 68y)
+        self.au_cols = list(range(137, 154))          # Face AU 
+        self.pose_cols = list(range(157, 160))        # Head pose
+        self.gaze_cols = list(range(160, 162))        # Gaze angle
         
         # **🔹 加载Whisper模型用于音频特征提取**
         print(f"🎵 Loading Whisper model: {whisper_model_name}")
@@ -66,14 +68,14 @@ class SpeakerListenerDataset(Dataset):
             df = df.loc[:self.target_length - 1]  # ✅ 限制为 750 帧
             df = self._interpolate_missing_frames(df)  # **✅ 插值补帧**
             
-            # 删除frame列（如果存在）
-            #if "frame" in df.columns:
-            #    df = df.drop(columns=["frame"])
+            landmarks_x = df.iloc[:, self.landmark_x_cols].values  # (750, 51) - 51个点的x坐标
+            landmarks_y = df.iloc[:, self.landmark_y_cols].values  # (750, 51) - 51个点的y坐标
             
-            # **🔹 分离不同类型的特征，不使用任何scaler**
-            # 1. Face landmarks (1-136列，索引0-135) - 只对landmarks归一化
-            landmarks = df.iloc[:, self.landmark_cols].values / 256.0
-            #landmarks = landmarks # **直接除以256归一化**
+            # **🔹 新增：landmarks中心化处理**
+            landmarks_x_centered, landmarks_y_centered = self._center_landmarks(landmarks_x, landmarks_y)
+            
+            # 合并为一个数组 (750, 102) - 51个点的x,y坐标
+            landmarks = np.concatenate([landmarks_x_centered, landmarks_y_centered], axis=1)
             
             # 2. Face AU (137-154列，索引136-153) - 保持原始值
             au_features = df.iloc[:, self.au_cols].values / 5.0
@@ -89,7 +91,35 @@ class SpeakerListenerDataset(Dataset):
         except Exception as e:
             print(f"⚠️  加载失败: {parquet_path} - {e}")
             return None, None, None, None
-
+    def _center_landmarks(self, landmarks_x, landmarks_y):
+        """
+        对landmarks进行中心化处理
+        Args:
+            landmarks_x: (T, 51) - 51个点的x坐标  
+            landmarks_y: (T, 51) - 51个点的y坐标
+        Returns:
+            tuple: (centered_x, centered_y) - 中心化后的坐标
+        """
+        centered_x = np.zeros_like(landmarks_x)
+        centered_y = np.zeros_like(landmarks_y)
+        
+        for frame_idx in range(landmarks_x.shape[0]):
+            # 计算当前帧所有点的质心
+            center_x = np.mean(landmarks_x[frame_idx])
+            center_y = np.mean(landmarks_y[frame_idx])
+            
+            # 中心化：减去质心
+            centered_x[frame_idx] = landmarks_x[frame_idx] - center_x
+            centered_y[frame_idx] = landmarks_y[frame_idx] - center_y
+        
+        # 归一化：除以一个尺度因子来控制数值范围
+        # 可以使用标准差或者固定的尺度因子
+        scale_factor = 100.0  # 可以根据实际情况调整
+        centered_x = centered_x / scale_factor
+        centered_y = centered_y / scale_factor
+        
+        return centered_x, centered_y
+    
     def _load_audio_with_whisper(self, audio_path):
         """使用Whisper提取音频特征"""
         if not os.path.exists(audio_path):

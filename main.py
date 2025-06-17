@@ -143,11 +143,11 @@ def main():
     # === 基本训练参数 ===
     parser.add_argument('--val-csv', type=str, default='/mnt/iusers01/fatpou01/compsci01/k09562zs/scratch/Face_data/val.csv',
                        help='验证数据CSV路径')
-    parser.add_argument('--batch-size', type=int, default=8,
+    parser.add_argument('--batch-size', type=int, default=32,
                        help='批次大小 (默认: 2)')
     parser.add_argument('--lr', type=float, default=1e-4,
                        help='学习率 (默认: 1e-4)')
-    parser.add_argument('--epochs', type=int, default=100,
+    parser.add_argument('--epochs', type=int, default=200,
                        help='训练轮数 (默认: 100)')
     parser.add_argument('--device', type=str, default='cuda',
                        help='训练设备 (默认: cuda)')
@@ -157,7 +157,7 @@ def main():
                        help='特征维度 (默认: 256)')
     parser.add_argument('--audio-dim', type=int, default=384,
                        help='音频特征维度 (默认: 384)')
-    parser.add_argument('--window-size', type=int, default=16,
+    parser.add_argument('--window-size', type=int, default=8,
                        help='窗口大小 (默认: 16)')
     parser.add_argument('--period', type=int, default=25,
                        help='周期性位置编码周期 (默认: 25)')

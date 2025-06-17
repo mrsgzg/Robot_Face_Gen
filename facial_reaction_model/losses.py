@@ -29,10 +29,10 @@ class MultiFacialReconstructionLoss(nn.Module):
         
         # 默认特征权重
         self.feature_weights = feature_weights or {
-            'landmarks': 1.0,  # 结构最重要
-            'au': 0.8,         # 表情很重要
-            'pose': 0.6,       # 姿态中等重要
-            'gaze': 0.4        # 视线相对不太重要
+            'landmarks': 1.5,  # 结构最重要
+            'au': 1.5,         # 表情很重要
+            'pose': 0.5,       # 姿态中等重要
+            'gaze': 0.5        # 视线相对不太重要
         }
         
         # 不同特征使用不同的损失函数
