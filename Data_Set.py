@@ -15,7 +15,7 @@ class SpeakerListenerDataset(Dataset):
         self.mapping_df = pd.read_csv(mapping_csv, engine="c")  # ✅ 使用 C 解析器加速
         
         # **🔹 定义OpenFace特征列索引**
-        self.landmark_x_cols = list(range(17, 68))        # 点17-67的x坐标 (列18-68)
+        self.landmark_x_cols = list(range(18, 69))        # 点17-67的x坐标 (列18-68)
         self.landmark_y_cols = list(range(86, 137)) 
         #self.landmark_cols = list(range(1, 137))      # Face landmarks (68x + 68y)
         self.au_cols = list(range(137, 154))          # Face AU 
@@ -81,10 +81,10 @@ class SpeakerListenerDataset(Dataset):
             au_features = df.iloc[:, self.au_cols].values / 5.0
             
             # 3. Head pose (157-160列，索引156-159) - 保持原始值
-            pose_features = df.iloc[:, self.pose_cols].values
+            pose_features = df.iloc[:, self.pose_cols].values / np.pi
             
             # 4. Gaze angle (161-162列，索引160-161) - 保持原始值
-            gaze_features = df.iloc[:, self.gaze_cols].values 
+            gaze_features = df.iloc[:, self.gaze_cols].values  / np.pi
 
             return landmarks, au_features, pose_features, gaze_features
             
@@ -114,7 +114,7 @@ class SpeakerListenerDataset(Dataset):
         
         # 归一化：除以一个尺度因子来控制数值范围
         # 可以使用标准差或者固定的尺度因子
-        scale_factor = 100.0  # 可以根据实际情况调整
+        scale_factor = 224  # 可以根据实际情况调整
         centered_x = centered_x / scale_factor
         centered_y = centered_y / scale_factor
         

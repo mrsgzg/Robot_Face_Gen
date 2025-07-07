@@ -1,3 +1,5 @@
 experiments/
 __pycache__/
 Visualization_results/
+sliding_results/
+sliding_results_lesspoint/
